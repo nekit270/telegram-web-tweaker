@@ -9,5 +9,5 @@
     <li>Экспорт чата в текстовый файл (бета)</li>
 </ul>
 <center>
-<a href=""
+<a href="htttps://raw.githubusercontent.com/nekit270/telegram-web-tweaker/main/telegram-web-tweaker.user.js">Установить</a> (необходим Tampermonkey)
 </center>
