@@ -1,0 +1,16 @@
+{
+    "name": "myFilter",
+    "description": "Description...",
+    "enabled": true,
+    "only_channels": true,
+    "chat_names": [],
+    "filters": [
+        {
+             "text_contains": ["text1", "text2"],
+             "html_contains": ["html1", "html2"],
+             "text_matches": "RegExp",
+             "html_matches": "RegExp",
+             "html_selector": "Selector"
+        }
+    ]
+}
