@@ -8,6 +8,5 @@
     <li>Получение ID чата</li>
     <li>Экспорт чата в текстовый файл (бета)</li>
 </ul>
-<center>
-    <a href="htttps://raw.githubusercontent.com/nekit270/telegram-web-tweaker/main/telegram-web-tweaker.user.js">Установить</a> (необходим Tampermonkey)
-</center>
+
+[Установить](htttps://raw.githubusercontent.com/nekit270/telegram-web-tweaker/main/telegram-web-tweaker.user.js") (необходим Tampermonkey)
