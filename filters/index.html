@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>html template</title>
+        <style>
+            body, html{
+                font: 22px Arial;
+                cursor: default;
+            }
+            a{
+                text-decoration: none;
+                padding: 5px;
+            }
+            a:visited{
+                color: blue;
+            }
+        </style>
+    </head>
+    <body>
+        <script>
+            let filterList = ['sample', 'no-links'];
+            filterList.forEach((e,i,o)=>{
+                let l = document.createElement('a');
+                l.href = 'https://web.telegram.org/k/?tw_install_filter=https://nekit270.github.io/web-telegram-tweaker/filters/'+e+'.json';
+                l.target = '_blank';
+                document.body.appendChild(l);
+            });
+        </script>
+    </body>
+</html>
