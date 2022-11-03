@@ -9,4 +9,4 @@
     <li>Экспорт чата в текстовый файл (бета)</li>
 </ul>
 
-[Установить](https://raw.githubusercontent.com/nekit270/telegram-web-tweaker/main/telegram-web-tweaker.user.js") (необходим Tampermonkey)
+[Установить](https://raw.githubusercontent.com/nekit270/telegram-web-tweaker/main/telegram-web-tweaker.user.js) (необходим Tampermonkey)
