@@ -62,6 +62,18 @@
         }
         let adBlockerFilters = JSON.parse(localStorage.adBlockerFilters);
 
+        let p = location.search.replace('?', '').split('&');
+        p.forEach((e,i,o)=>{
+            e = e.split('=');
+            let name = e[0], value = decodeURIComponent(e[1]);
+            switch(name){
+                case 'tw_install_filter': {
+                    filterAdd(value);
+                    break;
+                }
+            }
+        });
+
         setInterval(setPinnedState, 400);
         setInterval(()=>{
             if(chatList.firstChild?.dataset.twPinned != 'true') pinChats(1);
@@ -505,42 +517,43 @@
 
             w.popup('Добавить фильтр', inp, [{text: 'Отмена', type: 'danger'}, {text: 'Добавить', type: 'primary', onclick: filterAdd}]);
 
-            function filterAdd(){
-                let url = inp.value;
-                if(url.startsWith('{')){
-                    try{
-                        adBlockerFilters.push(JSON.parse(url));
-                        localStorage.adBlockerFilters = JSON.stringify(adBlockerFilters);
-                        w.popup('', 'Фильтр успешно добавлен.', [{text:'OK', type: 'primary'}]);
-                    }catch(e){
-                        w.popup('Ошибка', 'Некорректный код фильтра', [{text:'OK', type: 'primary'}]);
-                    }
-                }else{
-                    if(!url || !url.match(/http[s]*:\/\/[a-zA-Z0-9\/\.\-\_]+\.json/)){
-                        w.popup('Ошибка', 'Некорректный URL фильтра', [{text:'OK', type: 'primary'}]);
-                        return;
-                    }
+            filterAdd(inp.value);
+        }
 
-                    let xhr = new XMLHttpRequest();
-                    xhr.open('GET', url+(url.includes('?')?'&':'?')+'rand='+new Date().getTime());
-                    xhr.onload = ()=>{
-                        if(xhr.status == 200){
-                            try{
-                                adBlockerFilters.push(JSON.parse(xhr.response));
-                                localStorage.adBlockerFilters = JSON.stringify(adBlockerFilters);
-                                w.popup('', 'Фильтр успешно добавлен.', [{text:'OK', type: 'primary'}]);
-                            }catch(e){
-                                w.popup('Ошибка', 'Некорректный формат фильтра.', [{text:'OK', type: 'primary'}]);
-                            }
-                        }else{
-                            w.popup('Ошибка', `Не удалось скачать фильтр: ${xhr.status} ${xhr.statusText}`, [{text:'OK', type: 'primary'}]);
+        function filterAdd(url){
+            if(url.startsWith('{')){
+                try{
+                    adBlockerFilters.push(JSON.parse(url));
+                    localStorage.adBlockerFilters = JSON.stringify(adBlockerFilters);
+                    w.popup('', 'Фильтр успешно добавлен.', [{text:'OK', type: 'primary'}]);
+                }catch(e){
+                    w.popup('Ошибка', 'Некорректный код фильтра', [{text:'OK', type: 'primary'}]);
+                }
+            }else{
+                if(!url || !url.match(/http[s]*:\/\/[a-zA-Z0-9\/\.\-\_]+\.json/)){
+                    w.popup('Ошибка', 'Некорректный URL фильтра', [{text:'OK', type: 'primary'}]);
+                    return;
+                }
+
+                let xhr = new XMLHttpRequest();
+                xhr.open('GET', url+(url.includes('?')?'&':'?')+'rand='+new Date().getTime());
+                xhr.onload = ()=>{
+                    if(xhr.status == 200){
+                        try{
+                            adBlockerFilters.push(JSON.parse(xhr.response));
+                            localStorage.adBlockerFilters = JSON.stringify(adBlockerFilters);
+                            w.popup('', 'Фильтр успешно добавлен.', [{text:'OK', type: 'primary'}]);
+                        }catch(e){
+                            w.popup('Ошибка', 'Некорректный формат фильтра.', [{text:'OK', type: 'primary'}]);
                         }
-                    }
-                    xhr.onerror = ()=>{
+                    }else{
                         w.popup('Ошибка', `Не удалось скачать фильтр: ${xhr.status} ${xhr.statusText}`, [{text:'OK', type: 'primary'}]);
                     }
-                    xhr.send();
                 }
+                xhr.onerror = ()=>{
+                    w.popup('Ошибка', `Не удалось скачать фильтр: ${xhr.status} ${xhr.statusText}`, [{text:'OK', type: 'primary'}]);
+                }
+                xhr.send();
             }
         }
 
