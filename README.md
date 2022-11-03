@@ -9,4 +9,6 @@
     <li>Экспорт чата в текстовый файл (бета)</li>
 </ul>
 
-[Установить](https://raw.githubusercontent.com/nekit270/telegram-web-tweaker/main/telegram-web-tweaker.user.js) (необходим Tampermonkey)
+[Установить](https://nekit270.github.io/telegram-web-tweaker/telegram-web-tweaker.user.js) (необходим Tampermonkey)
+
+[Список фильтров блокировщика рекламы](https://nekit270.github.io/telegram-web-tweaker/filters)
