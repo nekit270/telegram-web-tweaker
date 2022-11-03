@@ -1,0 +1,11 @@
+{
+    "name": "no-links",
+    "description": "Удаляет все ссылки",
+    "enabled": true,
+    "only_channels": true,
+    "filters": [
+        {
+             "html_selector": "a"
+        }
+    ]
+}
