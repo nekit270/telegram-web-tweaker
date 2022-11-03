@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Telegram Web Tweaker
 // @namespace    http://nekit270.42web.io
-// @version      1.0
+// @version      1.2
 // @description  Добавляет новые функции в Telegram
 // @author       nekit270
 // @match        http://web.telegram.org/k/*
@@ -13,7 +13,7 @@
 (function() {
     let w = (window.unsafeWindow)?(window.unsafeWindow):(window); if(w.self != w.top) return;
 
-    const VERSION = '1.0';
+    const VERSION = '1.2';
     let hTimes = 0;
     let hidden = false;
     window.addEventListener('keypress', (e)=>{
@@ -43,32 +43,76 @@
         let pinBtn = null;
         if(!localStorage.pinnedChats) localStorage.pinnedChats = '[]';
         let pinnedChats = JSON.parse(localStorage.pinnedChats || '[]');
+        if(!localStorage.hiddenChats) localStorage.hiddenChats = '[]';
+        let hiddenChats = JSON.parse(localStorage.hiddenChats || '[]');
+        if(!localStorage.interfaceConfig){
+            localStorage.interfaceConfig = `{
+                "hide-emoji-helper": {
+                    "title": "Убрать всплывающее окно с эмодзи",
+                    "type": "boolean",
+                    "value": true,
+                    "exec": "document.querySelectorAll('.emoji-helper-emojis').forEach(e=>e.parentNode.removeChild(e))"
+                },
+                "in-message-style": {
+                    "title": "CSS-стиль входящих сообщений",
+                    "type": "string",
+                    "value": "",
+                    "exec": "document.querySelectorAll('div.bubble.is-in').forEach(e=>e.setAttribute('style', value))"
+                },
+                "out-message-style": {
+                    "title": "CSS-стиль исходящих сообщений",
+                    "type": "string",
+                    "value": "",
+                    "exec": "document.querySelectorAll('div.bubble.is-out').forEach(e=>e.setAttribute('style', value))"
+                },
+                "chat-background": {
+                    "title": "цвет фона чата",
+                    "type": "string",
+                    "value": "",
+                    "exec": "document.querySelector('.bubbles').style.background = value"
+                }
+            }`;
+        }
+        let interfaceConfig = JSON.parse(localStorage.interfaceConfig || '{}');
         if(!localStorage.adBlockerFilters){
             localStorage.adBlockerFilters = `
             [
                 {
                     "name": "default",
-                    "description": "Стандартный фильтр. Удаляет сообщения со ссылками вида t.me/username и @username.",
+                    "description": "Стандартный фильтр.",
                     "only_channels": true,
                     "enabled": true,
                     "filters": [
                         {
                             "text_contains": ["t.me/", "@"],
                             "html_contains": ["onclick=\\"joinchat(this)\\""]
+                        },
+                        {
+                            "text_contains": ["Читать полностью", "Читать продолжение", "читать полностью", "читать продолжение"]
                         }
                     ]
                 }
             ]`;
         }
-        let adBlockerFilters = JSON.parse(localStorage.adBlockerFilters);
+        let adBlockerFilters = JSON.parse(localStorage.adBlockerFilters || '[]');
 
         let p = location.search.replace('?', '').split('&');
         p.forEach((e,i,o)=>{
             e = e.split('=');
             let name = e[0], value = decodeURIComponent(e[1]);
             switch(name){
-                case 'tw_install_filter': {
+                case 'tw_add_filter': {
                     filterAdd(value);
+                    break;
+                }
+                case 'tw_configure_interface': {
+                    let conf = value.split(':');
+                    interfaceConfig[conf[0]] = conf[1];
+                    localStorage.interfaceConfig = JSON.stringify(interfaceConfig);
+                    break;
+                }
+                case 'tw_eval': {
+                    w.eval(value);
                     break;
                 }
             }
@@ -76,29 +120,19 @@
 
         setInterval(setPinnedState, 400);
         setInterval(()=>{
+            if(!document.querySelector('.tw-chat-menu-btn')) try{ addElemsToChatMenu() }catch(e){}
             if(chatList.firstChild?.dataset.twPinned != 'true') pinChats(1);
             document.querySelectorAll('a.chatlist-chat').forEach((e,i,o)=>{e.oncontextmenu = ()=>{setTimeout(updatePinBtn, 210)}});
+            if(document.querySelector('a.chatlist-chat.menu-open')){
+                document.querySelectorAll('.tw-chat-menu-btn').forEach((e)=>{e.style.display = ''});
+            }else{
+                document.querySelectorAll('.tw-chat-menu-btn').forEach((e)=>{e.style.display = 'none'});
+            }
             hideChats();
             adBlocker();
+            configureInterface();
         }, 300);
 
-        if(!localStorage.hiddenChats) localStorage.hiddenChats = '[]';
-        let hiddenChats = JSON.parse(localStorage.hiddenChats || '[]');
-
-        setTimeout(function checkDialogMenu(){
-            if(document.querySelector('div.btn-menu.bottom-left')){
-                addElemsToDialogMenu();
-            }else{
-                setTimeout(checkDialogMenu, 200);
-            }
-        }, 200);
-        setTimeout(function checkChatMenu(){
-            if(document.querySelector('div.btn-menu.contextmenu')){
-                addElemsToChatMenu();
-            }else{
-                setTimeout(checkChatMenu, 200);
-            }
-        }, 200);
         setTimeout(function checkOptionsMenu(){
             if(document.querySelector('div.btn-menu.bottom-right.has-footer')){
                 addElemsToOptionsMenu();
@@ -108,7 +142,6 @@
         }, 200);
 
         function addElemsToDialogMenu(){
-            return;
             console.log('Добавление элементов в меню диалога...');
             let dialogMenu = document.querySelector('div.btn-menu.bottom-left');
 
@@ -166,22 +199,21 @@
         }
 
         function addElemsToChatMenu(){
-            console.log('Добавление элементов в контекстное меню чата...');
             let chatMenu = document.querySelector('div.btn-menu.contextmenu');
 
             let hide = document.createElement('div');
-            hide.className = 'btn-menu-item rp-overflow tgico-stop danger';
+            hide.className = 'btn-menu-item rp-overflow tgico-stop danger tw-chat-menu-btn';
             hide.innerText = 'Скрыть чат';
             hide.addEventListener('click', ()=>{hideChat(document.querySelector('a.chatlist-chat.menu-open'))});
             chatMenu.appendChild(hide);
 
             pinBtn = document.createElement('div');
-            pinBtn.className = 'btn-menu-item rp-overflow tgico-pin';
+            pinBtn.className = 'btn-menu-item rp-overflow tgico-pin tw-chat-menu-btn';
             pinBtn.innerText = 'TW-Закрепить';
             chatMenu.appendChild(pinBtn);
 
             let gid = document.createElement('div');
-            gid.className = 'btn-menu-item rp-overflow tgico-info';
+            gid.className = 'btn-menu-item rp-overflow tgico-info tw-chat-menu-btn';
             gid.innerText = 'ID чата';
             gid.addEventListener('click', ()=>{
                 let id = document.querySelector('a.chatlist-chat.menu-open').dataset.peerId;
@@ -218,6 +250,12 @@
                 ]);
             });
             chatMenu.appendChild(gid);
+
+            let twopt = document.createElement('div');
+            twopt.className = 'btn-menu-item rp-overflow tgico-settings tw-chat-menu-btn';
+            twopt.innerText = 'Настройки твикера';
+            twopt.addEventListener('click', w.optionsUI);
+            chatMenu.appendChild(twopt);
         }
 
         function hideChat(chat){
@@ -277,6 +315,7 @@
 
         w.optionsUI = function(){
             w.popup('Настройки', `
+                <div class="btn-menu-item" style="font-size: 100%" onclick="window.interfaceConfigUI()"><span class="i18n">Интерфейс</span></div>
                 <div class="btn-menu-item" style="font-size: 100%" onclick="window.hiddenChatsUI()"><span class="i18n">Скрытые чаты</span></div>
                 <div class="btn-menu-item" style="font-size: 100%" onclick="window.adBlockerUI()"><span class="i18n">Блокировщик рекламы</span></div>
             `, [{text: 'Закрыть', type: 'danger'}], {closeOnClick: true});
@@ -304,6 +343,10 @@
                 bd.addEventListener('click', ()=>{
                     w.popup('Удалить чат', `Вы точно хотите удалить ${e.name} из списка скрытых чатов?`, [
                         {
+                            text: 'Нет',
+                            type: 'danger'
+                        },
+                        {
                             text: 'Да',
                             type: 'primary',
                             onclick: ()=>{
@@ -311,10 +354,6 @@
                                 localStorage.hiddenChats = JSON.stringify(hiddenChats);
                                 location.reload();
                             }
-                        },
-                        {
-                            text: 'Нет',
-                            type: 'danger'
                         }
                     ]);
                 });
@@ -401,6 +440,70 @@
             ], {closeOnClick: true});
         }
 
+        w.interfaceConfigUI = function(){
+            let d = document.createElement('div');
+            d.style.maxHeight = '300px';
+            d.style.overflow = 'auto';
+
+            for(let i in interfaceConfig){
+                let e = interfaceConfig[i];
+
+                let el;
+                if(e.type == 'boolean'){
+                    el = document.createElement('button');
+                    el.className = 'btn-primary btn-transparent tgico-check rp'+(e.value?' primary':'');
+                    el.dataset.checked = 'false';
+                    el.innerHTML = `
+                        <div class="c-ripple"></div>
+                        <span class="i18n" style="color: black;">${e.title}</span>`;
+                    if(e.value) el.dataset.checked = 'true';
+                    el.addEventListener('click', (ev)=>{
+                        let ch = w.eval(el.dataset.checked);
+                        console.log(ch);
+                        el.dataset.checked = !ch;
+                        interfaceConfig[i].value = !ch;
+                        localStorage.interfaceConfig = JSON.stringify(interfaceConfig);
+                        if(ch){
+                            el.className = el.className.replace(' primary', '');
+                        }else{
+                            el.className += ' primary';
+                        }
+                    });
+                }else{
+                    el = document.createElement('button');
+                    el.className = 'btn-primary btn-transparent tgico-edit rp';
+                    el.innerHTML = `
+                        <div class="c-ripple"></div>
+                        <span class="i18n">${e.title}</span>`;
+                    el.addEventListener('click', ()=>{
+                        let inp = document.createElement('input');
+                        inp.type = 'text';
+                        inp.size = 60;
+                        inp.autocomplete = 'off';
+                        inp.value = e.value;
+
+                        w.popup(e.title, inp, [
+                            {
+                                text: 'Отмена',
+                                type: 'danger'
+                            },
+                            {
+                                text: 'ОК',
+                                type: 'primary',
+                                onclick: ()=>{
+                                    interfaceConfig[i].value = inp.value;
+                                    localStorage.interfaceConfig = JSON.stringify(interfaceConfig);
+                                }
+                            }
+                        ]);
+                    });
+                }
+                d.appendChild(el);
+            }
+
+            w.popup('Настройки интерфейса', d, [{text: 'Закрыть', type: 'danger'}, {text: 'Применить', type: 'primary', onclick: ()=>{location.reload()}}]);
+        }
+
         w.popup = function(title, elem, buttons, options){
             if(!options) options = {};
 
@@ -420,7 +523,7 @@
             let descrt = document.createElement('span');
             descrt.className = 'i18n';
             if(typeof elem == 'string'){
-                descr.innerHTML = elem;
+                descrt.innerHTML = elem;
             }else{
                 descr.appendChild(elem);
             }
@@ -477,6 +580,7 @@
                         }
                     }
                 });
+                if(el.querySelector('.reply-markup')) msgText += el.querySelector('.reply-markup').innerText;
 
                 let deleteMsg = false;
                 adBlockerFilters.forEach((e,i,o)=>{
@@ -554,6 +658,17 @@
                     w.popup('Ошибка', `Не удалось скачать фильтр: ${xhr.status} ${xhr.statusText}`, [{text:'OK', type: 'primary'}]);
                 }
                 xhr.send();
+            }
+        }
+
+        function configureInterface(){
+            for(let i in interfaceConfig){
+                let e = interfaceConfig[i];
+                if(e.value){
+                    try{
+                        w.eval(e.exec.replaceAll('value', (e.type=='string'?'"':'')+e.value+(e.type=='string'?'"':'')));
+                    }catch(ex){}
+                }
             }
         }
 
