@@ -806,7 +806,7 @@
         function execScripts(){
             if(!document.querySelector('.input-message-input') || !document.querySelector('div.bubble.is-in')) return;
             scriptList.forEach((e,i,o)=>{
-                if(e.enabled && e.chats.indexOf(location.hash.replace('#', '')) > -1) w.bcsh.exec(e.code);
+                if(e.enabled && e.chats.indexOf(location.hash.replace('#', '')) > -1) w.bcsh.execScript(decodeURIComponent(atob(e.code)));
             });
         }
 
