@@ -1,0 +1,7 @@
+{
+	"name": "MyScript",
+	"description": "Описание скрипта",
+	"enabled": true,
+	"chats": ["Список чатов. Можно использовать @username и id"],
+	"code": "btoa(encodeURIComponent(код на BCSH)). Можно использовать команды tg.getmsg и tg.sendmsg"
+}
