@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>Создать скрипт</title>
+        <style>
+            body, html{
+                font: 18px Consolas, monospace;
+                cursor: default;
+                user-select: none;
+                -ms-user-select: none;
+                -moz-user-select: none;
+                -webkit-user-select: none;
+            }
+            *{
+                font-family: Consolas, monospace;
+            }
+            .center{
+                text-align: center;
+            }
+            .right{
+                float: right;
+            }
+            .padding{
+                padding: 3px 10px;
+            }
+            .btn{
+                font-size: 150%;
+                color: white;
+                background-color: green;
+                padding: 7px 40px;
+                cursor: pointer;
+                margin: 0px 25px;
+                flex-grow: 1;
+            }
+            .btn:hover{
+                background-color: purple;
+            }
+            .bigbtn{
+                font-size: 200%;
+                color: white;
+                background-color: green;
+                padding: 15px 80px;
+                margin: 15px;
+                cursor: pointer;
+            }
+            .bigbtn:hover{
+                background-color: yellowgreen;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="form">
+            <div class="center">
+                <h2>Создать скрипт</h2>
+            </div>
+            <div class="padding">
+                <label for="name">Название скрипта</label>
+                <input class="right" type="text" name="name" id="name" size="60" autocomplete="off">
+            </div>
+            <div class="padding">
+                <label for="description">Описание скрипта</label>
+                <input class="right" type="text" name="description" id="description" size="60" autocomplete="off">
+            </div>
+            <div class="padding">
+                <label for="chats">Список чатов (через запятую)</label>
+                <input class="right" type="text" name="chats" id="chats" size="60" autocomplete="off">
+            </div>
+            <br>
+            <div class="padding">
+                <span>Код</span><br>
+                <textarea name="code" id="code" style="width: 100%; height: 15em;">
+# Введите код скрипта
+# Он будет выполняться каждую секунду, пока у пользователя открыт чат
+# Если не знаете синтаксис BCSH, загляните сюда: https://nekit270.github.io/bcsh/doc/?name=about_syntax
+
+# Команды для Telegram
+#     Проверка на совпадение текста сообщения:      if '&str.equals &tg.getmsg, "текст"', `команды`
+#     Проверка на содержание текста в сообщении:    if '&str.contains &tg.getmsg, "текст"', `команды`
+#     Отправка сообщения:                           tg.sendmsg 'текст'
+</textarea>
+            </div>
+            <div class="center">
+                <button id="create" class="bigbtn">Создать</button>
+            </div>
+        </div>
+        <div id="output" style="display: none" class="padding">
+            <h1>Скрипт создан!</h1>
+            <textarea style="width: 100%; height: 20em" id="scode"></textarea><br><br>
+            <div style="display: flex; justify-content: space-around;">
+                <button class="btn" id="copy">Скопировать</button><button class="btn" id="download">Скачать</button>
+            </div>
+        </div>
+        <script>
+            let el = {};
+            document.querySelectorAll('*').forEach(e=>{if(e.id)el[e.id] = e});
+
+            el.create.addEventListener('click', ()=>{
+                el.form.style.display = 'none';
+                el.output.style.display = 'block';
+
+                let s = {};
+                s.name = el.name.value;
+                s.description = el.description.value;
+                s.enabled = true;
+                s.chats = el.chats.value.replaceAll(' ', '').split(',');
+                s.code = btoa(encodeURIComponent(el.code.value));
+
+                el.scode.value = JSON.stringify(s);
+            });
+
+            el.copy.addEventListener('click', ()=>{
+                el.scode.select();
+                document.execCommand('copy');
+            });
+
+            el.download.addEventListener('click', ()=>{
+                let l = document.createElement('a');
+                l.href = 'data:text/plain;charset=utf-8,'+encodeURIComponent(el.scode.value);
+                l.download = el.name.value+'.json';
+                l.click();
+            });
+        </script>
+    </body>
+</html>
