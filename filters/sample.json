@@ -1,16 +1,16 @@
 {
     "name": "myFilter",
-    "description": "Description...",
+    "description": "Описание фильтра",
     "enabled": true,
     "only_channels": true,
-    "chat_names": [],
+    "chat_names": ["Названия чатов, в которых будет использоваться фильтр."],
     "filters": [
         {
-             "text_contains": ["text1", "text2"],
-             "html_contains": ["html1", "html2"],
-             "text_matches": "RegExp",
-             "html_matches": "RegExp",
-             "html_selector": "Selector"
+             "text_contains": ["текст 1", "текст 2"],
+             "html_contains": ["html-код 1", "html-код 2"],
+             "text_matches": "регулярное выражение",
+             "html_matches": "регулярное выражение",
+             "html_selector": "селектор"
         }
     ]
 }
