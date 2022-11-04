@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Telegram Web Tweaker
 // @namespace    http://nekit270.42web.io
-// @version      1.2
+// @version      1.3
 // @description  Добавляет новые функции в Telegram
 // @author       nekit270
 // @match        http://web.telegram.org/k/*
@@ -13,7 +13,7 @@
 (function() {
     let w = (window.unsafeWindow)?(window.unsafeWindow):(window); if(w.self != w.top) return;
 
-    const VERSION = '1.2';
+    const VERSION = '1.3';
     let hTimes = 0;
     let hidden = false;
     window.addEventListener('keypress', (e)=>{
@@ -29,7 +29,11 @@
 
     setTimeout(function checkChats(){
         if(document.querySelector('a.chatlist-chat')){
-            startTweaker();
+            let s = document.createElement('script');
+            s.src = 'https://nekit270.github.io/bcsh/bcsh.js';
+            s.dataset.twLib = '';
+            s.onload = startTweaker;
+            document.body.appendChild(s);
         }else{
             setTimeout(checkChats, 200);
         }
@@ -38,6 +42,11 @@
     function startTweaker(){
         console.log('Telegram Web Tweaker '+VERSION);
         GM.registerMenuCommand('Настройки', ()=>{w.optionsUI()});
+        GM.registerMenuCommand('Интерфейс', ()=>{w.interfaceConfigUI()});
+        GM.registerMenuCommand('Скрытые чаты', ()=>{w.hiddenChatsUI()});
+        GM.registerMenuCommand('Блокировщик рекламы', ()=>{w.adBlockerUI()});
+        GM.registerMenuCommand('Скрипты', ()=>{w.scriptsUI()});
+        setupBCSH();
 
         let chatList = document.querySelector('ul.chatlist');
         let pinBtn = null;
@@ -45,6 +54,8 @@
         let pinnedChats = JSON.parse(localStorage.pinnedChats || '[]');
         if(!localStorage.hiddenChats) localStorage.hiddenChats = '[]';
         let hiddenChats = JSON.parse(localStorage.hiddenChats || '[]');
+        if(!localStorage.scriptList) localStorage.scriptList = '[]';
+        let scriptList = JSON.parse(localStorage.scriptList || '[]');
         if(!localStorage.interfaceConfig){
             localStorage.interfaceConfig = `{
                 "hide-emoji-helper": {
@@ -66,7 +77,7 @@
                     "exec": "document.querySelectorAll('div.bubble.is-out').forEach(e=>e.setAttribute('style', value))"
                 },
                 "chat-background": {
-                    "title": "цвет фона чата",
+                    "title": "Цвет фона чата",
                     "type": "string",
                     "value": "",
                     "exec": "document.querySelector('.bubbles').style.background = value"
@@ -85,7 +96,7 @@
                     "filters": [
                         {
                             "text_contains": ["t.me/", "@"],
-                            "html_contains": ["onclick=\\"joinchat(this)\\""]
+                            "html_contains": ["onclick=\\"joinchat(this)\\"", "onclick=\\"im(this)\\""]
                         },
                         {
                             "text_contains": ["Читать полностью", "Читать продолжение", "читать полностью", "читать продолжение"]
@@ -107,7 +118,8 @@
                 }
                 case 'tw_configure_interface': {
                     let conf = value.split(':');
-                    interfaceConfig[conf[0]] = conf[1];
+                    console.log(conf[0], interfaceConfig[conf[0]], conf[1]);
+                    interfaceConfig[conf[0]].value = conf[1];
                     localStorage.interfaceConfig = JSON.stringify(interfaceConfig);
                     break;
                 }
@@ -119,6 +131,7 @@
         });
 
         setInterval(setPinnedState, 400);
+        setInterval(execScripts, 1000);
         setInterval(()=>{
             if(!document.querySelector('.tw-chat-menu-btn')) try{ addElemsToChatMenu() }catch(e){}
             if(chatList.firstChild?.dataset.twPinned != 'true') pinChats(1);
@@ -173,10 +186,7 @@
 
         function updatePinBtn(){
             let selectedChat = document.querySelector('a.chatlist-chat.menu-open');
-            if(!selectedChat || !pinBtn){
-                console.log('ОШИБКА', selectedChat, pinBtn);
-                return;
-            }
+            if(!selectedChat || !pinBtn) return;
             if(selectedChat.dataset.twPinned == 'true'){
                 pinBtn.className = 'btn-menu-item rp-overflow tgico-unpin';
                 pinBtn.innerText = 'TW-Открепить';
@@ -318,11 +328,14 @@
                 <div class="btn-menu-item" style="font-size: 100%" onclick="window.interfaceConfigUI()"><span class="i18n">Интерфейс</span></div>
                 <div class="btn-menu-item" style="font-size: 100%" onclick="window.hiddenChatsUI()"><span class="i18n">Скрытые чаты</span></div>
                 <div class="btn-menu-item" style="font-size: 100%" onclick="window.adBlockerUI()"><span class="i18n">Блокировщик рекламы</span></div>
+                <div class="btn-menu-item" style="font-size: 100%" onclick="window.scriptsUI()"><span class="i18n">Скрипты</span></div>
             `, [{text: 'Закрыть', type: 'danger'}], {closeOnClick: true});
         }
 
         w.hiddenChatsUI = function(){
             let tb = document.createElement('table');
+            tb.style.maxHeight = '300px';
+            tb.style.overflow = 'auto';
             hiddenChats.forEach((e,i,o)=>{
                 let tr = document.createElement('tr');
                 let c = document.createElement('td');
@@ -369,6 +382,8 @@
 
         w.adBlockerUI = function(){
             let tb = document.createElement('table');
+            tb.style.maxHeight = '300px';
+            tb.style.overflow = 'auto';
             adBlockerFilters.forEach((e,i,o)=>{
                 let tr = document.createElement('tr');
                 let c = document.createElement('td');
@@ -376,7 +391,7 @@
                 c.innerText = e.name;
                 c.title = e.description;
                 if(e.only_channels) c.title += '\nФильтр действует только на каналы';
-                if(e.chat_names) c.title += `\nФильтр действует только на следующие ${e.only_channels?'каналы':'чаты'}: ${e.chat_names.join(', ')}`;
+                if(e.chats) c.title += `\nФильтр действует только на следующие ${e.only_channels?'каналы':'чаты'}: ${e.chats.join(', ')}`;
 
                 let betd = document.createElement('td');
                 let bed = document.createElement('button');
@@ -504,6 +519,80 @@
             w.popup('Настройки интерфейса', d, [{text: 'Закрыть', type: 'danger'}, {text: 'Применить', type: 'primary', onclick: ()=>{location.reload()}}]);
         }
 
+        w.scriptsUI = function(){
+            let tb = document.createElement('table');
+            tb.style.maxHeight = '300px';
+            tb.style.overflow = 'auto';
+            scriptList.forEach((e,i,o)=>{
+                let tr = document.createElement('tr');
+                let c = document.createElement('td');
+                c.className = 'btn-menu-item rp';
+                c.innerText = e.name;
+                c.title = e.description;
+                c.title += '\nСкрипт работает в следующих чатах: '+e.chats.join(', ')
+
+                let betd = document.createElement('td');
+                let bed = document.createElement('button');
+                bed.className = 'btn rp tgico-check';
+                bed.style.padding = '3px';
+                bed.style.marginLeft = '180px';
+                bed.style.fontSize = '150%';
+                if(e.enabled){
+                    bed.style.color = 'green';
+                    bed.title = 'Отключить скрипт';
+                    bed.addEventListener('click', ()=>{
+                        o[i].enabled = false;
+                        localStorage.scriptList = JSON.stringify(o);
+                        w.scriptsUI();
+                    });
+                }else{
+                    bed.style.color = 'gray';
+                    bed.title = 'Включить скрипт';
+                    bed.addEventListener('click', ()=>{
+                        o[i].enabled = true;
+                        localStorage.scriptList = JSON.stringify(o);
+                        w.scriptsUI();
+                    });
+                }
+
+                let btd = document.createElement('td');
+                let bd = document.createElement('button');
+                bd.className = 'btn danger rp tgico-delete';
+                bd.style.padding = '3px';
+                bd.style.fontSize = '150%';
+                bd.title = 'Удалить скрипт';
+                bd.addEventListener('click', ()=>{
+                    w.popup('Удалить скрипт', `Вы точно хотите удалить скрипт ${e.name}?`, [
+                        {
+                            text: 'Нет',
+                            type: 'danger'
+                        },
+                        {
+                            text: 'Да',
+                            type: 'primary',
+                            onclick: ()=>{
+                                scriptList.splice(scriptList.indexOf(e), 1);
+                                localStorage.scriptList = JSON.stringify(scriptList);
+                                w.scriptsUI();
+                            }
+                        }
+                    ]);
+                });
+
+                betd.appendChild(bed);
+                if(e.name != 'default') btd.appendChild(bd);
+                tr.appendChild(c);
+                tr.appendChild(betd);
+                tr.appendChild(btd);
+                tb.appendChild(tr);
+            });
+
+            w.popup('Скрипты', tb, [
+                {text: 'Закрыть', type: 'danger'},
+                {text: 'Добавить скрипт', type: 'primary', onclick: addScript}
+            ], {closeOnClick: true});
+        }
+
         w.popup = function(title, elem, buttons, options){
             if(!options) options = {};
 
@@ -557,7 +646,7 @@
         }
 
         function adBlocker(){
-            let userName = document.querySelector('.chat-info')?.querySelector('.user-title')?.innerText;
+            let userName = location.hash.replace('#');
             if(!userName) return;
             let msgs = document.querySelector('.bubbles-inner');
             if(!msgs) return;
@@ -565,27 +654,18 @@
                 if(el.dataset.noAds) return;
                 el.dataset.noAds = true;
 
+                let msgText, msgHTML;
                 let msg = el.querySelector('div.message');
-                if(!msg) return;
-                let msgText = '';
-                let msgHTML = '';
-                msg.childNodes.forEach((e,i,o)=>{
-                    if(e.className != 'time tgico'){
-                        if(e.nodeName == '#text'){
-                            msgText += e.data;
-                            msgHTML += e.data;
-                        }else{
-                            msgText += e.innerText;
-                            msgHTML += e.outerHTML;
-                        }
-                    }
-                });
+                let r = getMessageText(msg);
+                msgText = r[0];
+                msgHTML = r[1];
+
                 if(el.querySelector('.reply-markup')) msgText += el.querySelector('.reply-markup').innerText;
 
                 let deleteMsg = false;
                 adBlockerFilters.forEach((e,i,o)=>{
                     if(!e.enabled) return;
-                    if(e.chat_names && (e.chat_names.indexOf(userName) == -1)) return;
+                    if(e.chats && (e.chats.indexOf(userName) == -1)) return;
                     if(e.only_channels && !el.className.includes('channel-post')) return;
                     e.filters.forEach((e,i,o)=>{
                         if(!deleteMsg && e.html_contains){
@@ -619,9 +699,7 @@
             inp.autocomplete = 'off';
             inp.placeholder = 'Введите URL или код фильтра';
 
-            w.popup('Добавить фильтр', inp, [{text: 'Отмена', type: 'danger'}, {text: 'Добавить', type: 'primary', onclick: filterAdd}]);
-
-            filterAdd(inp.value);
+            w.popup('Добавить фильтр', inp, [{text: 'Отмена', type: 'danger'}, {text: 'Добавить', type: 'primary', onclick: ()=>{filterAdd(inp.value)}}]);
         }
 
         function filterAdd(url){
@@ -661,6 +739,53 @@
             }
         }
 
+        function addScript(){
+            let inp = document.createElement('input');
+            inp.type = 'url';
+            inp.size = 60;
+            inp.autocomplete = 'off';
+            inp.placeholder = 'Введите URL или код скрипта';
+
+            w.popup('Добавить скрипт', inp, [{text: 'Отмена', type: 'danger'}, {text: 'Добавить', type: 'primary', onclick: ()=>{scriptAdd(inp.value)}}]);
+        }
+
+        function scriptAdd(url){
+            if(url.startsWith('{')){
+                try{
+                    scriptList.push(JSON.parse(url));
+                    localStorage.scriptList = JSON.stringify(scriptList);
+                    w.popup('', 'Скрипт успешно установлен.', [{text:'OK', type: 'primary'}]);
+                }catch(e){
+                    w.popup('Ошибка', 'Некорректный код скрипта.', [{text:'OK', type: 'primary'}]);
+                }
+            }else{
+                if(!url || !url.match(/http[s]*:\/\/[a-zA-Z0-9\/\.\-\_]+\.json/)){
+                    w.popup('Ошибка', 'Некорректный URL скрипта.', [{text:'OK', type: 'primary'}]);
+                    return;
+                }
+
+                let xhr = new XMLHttpRequest();
+                xhr.open('GET', url+(url.includes('?')?'&':'?')+'rand='+new Date().getTime());
+                xhr.onload = ()=>{
+                    if(xhr.status == 200){
+                        try{
+                            scriptList.push(JSON.parse(xhr.response));
+                            localStorage.scriptList = JSON.stringify(scriptList);
+                            w.popup('', 'Скрипт успешно установлен.', [{text:'OK', type: 'primary'}]);
+                        }catch(e){
+                            w.popup('Ошибка', 'Некорректный формат скрипта.', [{text:'OK', type: 'primary'}]);
+                        }
+                    }else{
+                        w.popup('Ошибка', `Не удалось скачать скрипт: ${xhr.status} ${xhr.statusText}`, [{text:'OK', type: 'primary'}]);
+                    }
+                }
+                xhr.onerror = ()=>{
+                    w.popup('Ошибка', `Не удалось скачать скрипт: ${xhr.status} ${xhr.statusText}`, [{text:'OK', type: 'primary'}]);
+                }
+                xhr.send();
+            }
+        }
+
         function configureInterface(){
             for(let i in interfaceConfig){
                 let e = interfaceConfig[i];
@@ -670,6 +795,56 @@
                     }catch(ex){}
                 }
             }
+        }
+
+        function setupBCSH(){
+            let c = w.bcsh.commands;
+            c['tg.getmsg'] = getLastMessage;
+            c['tg.sendmsg'] = (args)=>{ sendMessage(args[0]) }
+        }
+
+        function execScripts(){
+            if(!document.querySelector('.input-message-input') || !document.querySelector('div.bubble.is-in')) return;
+            scriptList.forEach((e,i,o)=>{
+                if(e.enabled && e.chats.indexOf(location.hash.replace('#', '')) > -1) w.bcsh.exec(e.code);
+            });
+        }
+
+        function getMessageText(msg){
+            if(!msg) return ['', ''];
+            let msgText = '';
+            let msgHTML = '';
+            msg.childNodes.forEach((e,i,o)=>{
+                if(e.className != 'time tgico'){
+                    if(e.nodeName == '#text'){
+                        msgText += e.data;
+                        msgHTML += e.data;
+                    }else{
+                        msgText += e.innerText;
+                        msgHTML += e.outerHTML;
+                    }
+                }
+            });
+            return [msgText, msgHTML];
+        }
+
+        function getLastMessage(){
+            if(document.querySelector('div.bubble.is-in')){
+                let m = [];
+                document.querySelectorAll('div.bubble').forEach((e,i,o)=>{
+                    m.push({b: e, m: e.querySelector('.message')});
+                });
+                let e = m[m.length-1];
+                if(e.b.className.includes('is-in')) return getMessageText(e.m)[0];
+            }
+        }
+
+        function sendMessage(text){
+            let sendi = document.querySelector('.input-message-input');
+            let sendb = document.querySelector('.btn-send');
+            if(!sendi || !sendb) return;
+            sendi.innerText = text;
+            sendb.click();
         }
 
         function downloadChat(){
